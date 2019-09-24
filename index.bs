@@ -4287,8 +4287,11 @@ An [=interface=] can be declared to be asynchronously iterable by using an
 (matching <emu-nt><a href="#prod-AsyncIterable">AsyncIterable</a></emu-nt>) in the body of the
 [=interface=].
 
-<pre highlight="webidl" class="syntax">
+<!-- TODO: add highlight="idl" after idlparser gets updated -->
+<pre class="syntax">
     interface interface_identifier {
+      async iterable&lt;value_type&gt;;
+      async iterable&lt;value_type&gt;(/* arguments... */);
       async iterable&lt;key_type, value_type&gt;;
     };
 </pre>
@@ -4296,19 +4299,29 @@ An [=interface=] can be declared to be asynchronously iterable by using an
 Objects that [=implement=] an [=interface=] that is declared to be asynchronously iterable support
 being iterated over asynchronously to obtain a sequence of values.
 
+If a single type parameter is given, then the interface has a
+<dfn export>value asynchronously iterable declaration</dfn> and asynchronously provides values of the
+specified type. If two type parameters are given, then the interface has a
+<dfn export>pair asynchronously iterable declaration</dfn> and asynchronously provides
+[=value pairs=] with the given types.
+
 Note: In the ECMAScript language binding, an interface that is asynchronously iterable will have
-<code class="idl">entries</code>, <code class="idl">keys</code>, <code class="idl">values</code>,
-and {{@@asyncIterator}} properties on its [=interface prototype object=].
+{{@@asyncIterator}} and <code class="idl">values</code> properties on its
+[=interface prototype object=]. If the interface has a [=pair asynchronously iterable declaration=],
+it will additionally have <code class="idl">entries</code> and <code class="idl">keys</code>
+properties.
 
 Prose accompanying an [=interface=] with an [=asynchronously iterable declaration=] must define a
 <dfn id="dfn-get-the-next-iteration-result" export>get the next iteration result</dfn> algorithm.
 This algorithm receives the instance of the [=interface=] that is being iterated, as well as the
 async iterator itself (which can be useful for storing state).
 It must return a {{Promise}} that either rejects, resolves with undefined to signal the end of the
-iteration, or resolves with a tuple containing two elements:
+iteration, or resolves with one of the following:
 
-1.  a value of the first type given in the declaration;
-1.  a value of the second type given in the declaration.
+: for [=value asynchronously iterable declarations=]:
+::  a value of the type given in the declaration;
+: for [=pair asynchronously iterable declarations=]:
+::  a tuple containing a value of the first type given in the declaration, and a value of the second type given in the declaration.
 
 The prose may also define an <dfn export>asynchronous iterator return</dfn> algorithm. This
 algorithm receives the instance of the [=interface=] that is being iterated, the async iterator
@@ -4333,6 +4346,13 @@ iterator object.
 [=Interfaces=] with an [=asynchronously iterable declaration=] must not have any
 [=interface members=] named "<code>entries</code>", "<code>keys</code>", or "<code>values</code>",
 or have any [=inherited interfaces=] that have [=interface members=] with these names.
+
+If given, an [=asynchronously iterable declaration=]'s arguments (matching
+<emu-nt><a href="#prod-ArgumentList">ArgumentList</a></emu-nt>) must all be [=optional arguments=].
+
+<p class="note">This ensures that, in the ECMAScript binding,
+<code>for</code>-<code>await</code>-<code>of</code> can work directly on instances of the
+interface.
 
 <div class="example">
 
@@ -4437,7 +4457,10 @@ When they are, the effect will be as you would expect.
 
 <pre class="grammar" id="prod-AsyncIterable">
     AsyncIterable :
+        "async" "iterable" "&lt;" TypeWithExtendedAttributes "&gt;" ";"
+        "async" "iterable" "&lt;" TypeWithExtendedAttributes "&gt;" "(" ArgumentList ")" ";"
         "async" "iterable" "&lt;" TypeWithExtendedAttributes "," TypeWithExtendedAttributes "&gt;" ";"
+        "async" "iterable" "&lt;" TypeWithExtendedAttributes "," TypeWithExtendedAttributes "&gt;" "(" ArgumentList ")" ";"
 </pre>
 
 
@@ -12257,7 +12280,7 @@ property is the String value "<code>forEach</code>".
 
 <h5 id="es-iterable-entries">entries</h5>
 
-If the [=interface=] has an [=iterable declaration=] or an [=asynchronously iterable declaration=],
+If the [=interface=] has an [=iterable declaration=] or a [=pair asynchronously iterable declaration=],
 then an <code class="idl">entries</code> data property must exist with attributes
 { \[[Writable]]: <emu-val>true</emu-val>, \[[Enumerable]]: <emu-val>true</emu-val>, \[[Configurable]]: <emu-val>true</emu-val> }
 and whose value is a [=function object=].
@@ -12275,12 +12298,12 @@ If the interface has a [=pair iterator=],
 then the [=function object=] is
 the value of the {{@@iterator}} property.
 
-If the interface has an [=asynchronously iterable declaration=], then the [=function object=] is
+If the interface has a [=pair asynchronously iterable declaration=], then the [=function object=] is
 the value of the {{@@asyncIterator}} property.
 
 <h5 id="es-iterable-keys">keys</h5>
 
-If the [=interface=] has an [=iterable declaration=] or an [=asynchronously iterable declaration=],
+If the [=interface=] has an [=iterable declaration=] or a [=pair asynchronously iterable declaration=],
 then a <code class="idl">keys</code> data property must exist with attributes
 { \[[Writable]]: <emu-val>true</emu-val>, \[[Enumerable]]: <emu-val>true</emu-val>, \[[Configurable]]: <emu-val>true</emu-val> }
 and whose value is a [=function object=].
@@ -12316,7 +12339,7 @@ then the [=function object=] is {{%ArrayProto_keys%}}.
 
 <div algorithm="to invoke the keys method of asynchronously iterable interfaces">
 
-    If the interface has an [=asynchronously iterable declaration=], then the method, when invoked,
+    If the interface has a [=pair asynchronously iterable declaration=], then the method, when invoked,
     must behave as follows:
 
     1.  Let |object| be the result of calling [$ToObject$] on the <emu-val>this</emu-val> value.
@@ -12382,7 +12405,7 @@ the value of the {{@@iterator}} property.
 <div algorithm="to invoke the values method of asynchronously iterable interfaces">
 
     If the interface has an [=asynchronously iterable declaration=], then the method, when invoked,
-    must behave as follows:
+    must behave as follows: TODO pass in the args somehow??
 
     1.  Let |object| be the result of calling [$ToObject$] on the <emu-val>this</emu-val> value.
     1.  If |object| [=is a platform object=], then [=perform a security check=], passing:
@@ -12592,8 +12615,16 @@ The \[[Prototype]] [=internal slot=] of an [=asynchronous iterator prototype obj
                 1.  Set |object|'s [=default asynchronous iterator object/is finished=] to true.
                 1.  Return [=!=] [$CreateIterResultObject$](<emu-val>undefined</emu-val>,
                     <emu-val>true</emu-val>).
-            1.  Otherwise:
+            1.  Otherwise, if the corresponding [=asynchronously iterable declaration=] is a
+                [=pair asynchronously iterable declaration=]:
+                1.  Assert: |next| is a [=value pair=].
                 1.  Return the [=iterator result=] for |next| and |kind|.
+            1.  Otherwise:
+                1.  Assert: the corresponding [=asynchronously iterable declaration=] is a
+                    [=value asynchronously iterable declaration=].
+                1.  Assert: |next| is a value of the type that appears in the declaration.
+                1.  Let |value| be |next|, [=converted to an ECMAScript value=].
+                1.  Return [=!=] [$CreateIterResultObject$](|value|, <emu-val>false</emu-val>).
         1.  Let |onFulfilled| be [=!=] [$CreateBuiltinFunction$](|fulfillSteps|, « »).
         1.  Perform [=!=] [$PerformPromiseThen$](|nextPromise|, |onFulfilled|,
             <emu-val>undefined</emu-val>, |nextPromiseCapability|).
@@ -12618,7 +12649,7 @@ The \[[Prototype]] [=internal slot=] of an [=asynchronous iterator prototype obj
 
 <div algorithm="to invoke the return property of asynchronous iterators">
 
-    If an [=asynchronous iterator return=] algorithm is defined for the [=inferface=], then the
+    If an [=asynchronous iterator return=] algorithm is defined for the [=interface=], then the
     [=asynchronous iterator prototype object=] must have a <code class="idl">return</code> data
     property with attributes { \[[Writable]]: <emu-val>true</emu-val>,
     \[[Enumerable]]: <emu-val>true</emu-val>, \[[Configurable]]: <emu-val>true</emu-val> }
