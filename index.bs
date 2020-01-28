@@ -84,6 +84,7 @@ urlPrefix: https://tc39.github.io/ecma262/; spec: ECMA-262
         text: Set; url: sec-set-objects
         text: SharedArrayBuffer; url: sec-sharedarraybuffer-objects
         text: %AsyncIteratorPrototype%; url: sec-asynciteratorprototype
+        text: %ArrayPrototype%; url: sec-properties-of-the-array-prototype-object
         text: %ErrorPrototype%; url: sec-properties-of-the-error-prototype-object
         text: %FunctionPrototype%; url: sec-properties-of-the-function-prototype-object
         text: %IteratorPrototype%; url: sec-%iteratorprototype%-object
@@ -120,6 +121,7 @@ urlPrefix: https://tc39.github.io/ecma262/; spec: ECMA-262
         text: CanonicalNumericIndexString; url: sec-canonicalnumericindexstring
         text: Completion; url: sec-completion
         text: Construct; url: sec-construct
+        text: CreateArrayFromList; url: sec-createarrayfromlist
         text: CreateArrayIterator; url: sec-createarrayiterator
         text: CreateBuiltinFunction; url: sec-createbuiltinfunction
         text: CreateDataProperty; url: sec-createdataproperty
@@ -133,11 +135,13 @@ urlPrefix: https://tc39.github.io/ecma262/; spec: ECMA-262
             text: SetMutableBinding
             text: CreateMutableBinding
             text: InitializeBinding
+        text: FromPropertyDescriptor; url: sec-frompropertydescriptor
         text: Get; url: sec-get-o-p
         text: GetFunctionRealm; url: sec-getfunctionrealm
         text: GetIterator; url: sec-getiterator
         text: GetMethod; url: sec-getmethod
         text: IfAbruptRejectPromise; url: sec-ifabruptrejectpromise
+        text: IsArray; url: sec-isarray
         text: IsAccessorDescriptor; url: sec-isaccessordescriptor
         text: IsCallable; url: sec-iscallable
         text: IsConstructor; url: sec-isconstructor
@@ -152,10 +156,13 @@ urlPrefix: https://tc39.github.io/ecma262/; spec: ECMA-262
         text: NormalCompletion; url: sec-normalcompletion
         text: ObjectCreate; url: sec-objectcreate
         text: OrdinaryDefineOwnProperty; url: sec-ordinarydefineownproperty
+        text: OrdinaryGet; url: sec-ordinaryget
         text: OrdinaryGetOwnProperty; url: sec-ordinarygetownproperty
+        text: OrdinaryHasProperty; url: sec-ordinaryhasproperty
         text: OrdinaryPreventExtensions; url: sec-ordinarypreventextensions
         text: OrdinarySetWithOwnDescriptor; url: sec-ordinarysetwithowndescriptor
         text: PerformPromiseThen; url: sec-performpromisethen
+        text: ProxyCreate; url: sec-proxycreate
         text: Set; url: sec-set-o-p-v-throw
         text: SetFunctionLength; url: sec-setfunctionlength
         text: SetFunctionName; url: sec-setfunctionname
@@ -221,6 +228,7 @@ urlPrefix: https://tc39.github.io/ecma262/; spec: ECMA-262
         text: own property; url: sec-own-property
         text: PromiseCapability; url: sec-promisecapability-records
         text: Property Descriptor; url: sec-property-descriptor-specification-type
+        text: Proxy exotic object; url: sec-proxy-object-internal-methods-and-internal-slots
         text: Source Text Module Record; url: sourctextmodule-record
         text: realm; url: realm
         text: ResolvedBinding Record; url: resolvedbinding-record
@@ -5756,6 +5764,7 @@ type.
         "symbol" Null
         BufferRelatedType Null
         "FrozenArray" "&lt;" TypeWithExtendedAttributes "&gt;" Null
+        "ObservableArray" "&lt;" TypeWithExtendedAttributes "&gt;" Null
         RecordType Null
 </pre>
 
@@ -6775,6 +6784,151 @@ The [=type name=] of a frozen array
 type is the concatenation of the type name for |T| and the string
 "<code>Array</code>".
 
+<h4 id="idl-observable-array" interface lt="ObservableArrayT|ObservableArray&lt;T&gt;">Observable array types — ObservableArray&lt;|T|&gt;</h4>
+
+An <dfn id="dfn-observable-array-type" export>observable array type</dfn> is a parametrized type
+whose values are references to objects of type |T|. The contents of the array can be mutated, both
+by specifications and by author code, and specification code can define how it reacts to such
+mutations, including by rejecting them.  
+
+Similar to [=sequence types=] and [=frozen array types=], observable array types wrap around
+ECMAScript array types, imposing additional semantics on their usage.
+
+Observable arrays must only be used as attributes, and not as operation arguments.
+
+<p class="note">We could also allow them as operation return values with a bit more work. Please 
+<a href="https://github.com/heycam/webidl/issues/new?title=Enhancement%20request%20for%20observable%20array%20return%20values">file an issue</a>
+if you would like to use them as such.</p>
+
+For an attribute whose type is an observable array type, specification authors can specify a series
+algorithms:
+
+*   <dfn for="observable array attribute">before add</dfn>, which accepts an IDL value that is about
+    to be added to the [=backing observable array contents=], and an index before which the new
+    value is about to be placed;
+*   <dfn for="observable array attribute">after add</dfn>, which accepts an IDL value that was just
+    added to the [=backing observable array contents=], and the index at which it is now located;
+*   <dfn for="observable array attribute">before delete</dfn>, which accepts an IDL value that is
+    about to be removed from the [=backing observable array contents=] the index at which it is
+    currently located; and
+*   <dfn for="observable array attribute">after delete</dfn>, which accepts an IDL value that was
+    just removed from the [=backing observable array contents=] and the index at which it was
+    located.
+
+All of these algorithms are optional, and if not provided, the default behavior will be to do
+nothing. The [=observable array attribute/before add=] and
+[=observable array attribute/before delete=] algorithms may throw an exception, but the
+[=observable array attribute/after add=] and [=observable array attribute/after delete=] algorithms
+must not.
+
+Specification authors can refer to an an attribute's
+<dfn export>backing observable array contents</dfn>, which is the [=list=] obtained by retrieving
+TODO.
+Mutations to this list (e.g. by [=list/appending=] to it) will be visible to authors, and any
+mutations by authors to the observable array's contents (e.g. by using
+<code>obj.observableArrayAttr.push(value)</code>) will be observable as changes to the list, after
+running through the above algorithms.
+
+Every attribute whose type is an observable array type has a backing TODO maybe.
+
+There is no way to represent a constant observable array value in IDL.
+
+The [=type name=] of an observable array type is the concatenation of the type name for |T| and the
+string "<code>ObservableArray</code>".
+
+<div class="example">
+    The following [=IDL fragment=] defines an [=interface=] with an observable array attribute:
+
+    <!-- TODO: use highlight="idl" after parser update. -->
+    <pre>
+        [Exposed=Window]
+        interface Building {
+          attribute ObservableArray&lt;Employee> employees;
+        };
+    </pre>
+
+    The behavior of the attribute could be defined like so:
+
+    <blockquote>
+        The [=observable array attribute/before add=] algorithm for
+        <code class="idl">Building</code>'s <code class="idl">employees</code> attribute, given
+        |employee| and |index|, is:
+
+        1.  If |employee| is not allowed to enter the building today, then throw an
+            "{{NotAllowedError}}" {{DOMException}}.
+        1.  If |index| is greater than 200, then throw a "{{QuotaExceededError}}" {{DOMException}}.
+
+        The [=observable array attribute/after add=] algorithm for
+        <code class="idl">Building</code>'s <code class="idl">employees</code> attribute, given
+        |employee|, is:
+
+        1.  Alert security that |employee| has entered the building.
+
+        The [=observable array attribute/after delete=] algorithm for
+        <code class="idl">Building</code>'s <code class="idl">employees</code> attribute, given
+        |employee|, is:
+
+        1.  Alert security that |employee| has left the building.
+    </blockquote>
+
+    At any time, other parts of the specification can refer to a <code class="idl">Building</code>
+    instance's <code class="idl">employees</code> attribute's [=backing observable array contents=].
+
+    Then, ECMAScript code could manipulate the <code class="idl">employees</code> property in
+    various ways:
+
+    <pre highlight="js">
+        // Get an instance of Building.
+        const building = getBuilding();
+
+        building.employees.push(new Employee("A"));
+        building.employees.push(new Employee("B"));
+        building.employees.push(new Employee("C"));
+
+        building.employees.splice(1, 1);
+        const employeeB = building.employees.pop();
+
+        building.employees = [new Employee("D"), employeeB, new Employee("C")];
+
+        building.employees.length = 0;
+
+        // Will throw:
+        building.employees.push("not an Employee; a string instead");
+    </pre>
+
+    All of these manipulations would pass through the above-defined
+    [=observable array attribute/before add=] algorithm, potentially throwing if the conditions
+    described there were met. They would also all alert security about arrivals and departures, and
+    ensure that the [=backing observable array contents=] can be referenced from any part of the
+    specification to get an up-to-date view of the employees in the building.
+
+    Note also how all of the ECMAScript array methods from {{%ArrayPrototype%}} work on the
+    observable array, and indeed it fully behaves like an <code>Array</code> instance:
+
+    <pre highlight="js">
+        const normalArray = [];
+
+        normalArray.concat(building.employees);
+
+        // If building.employees were defined as an indexed property getter interface: normalArray
+        // would contains a single item, building.employees.
+        //
+        // For observable arrays and frozen arrays: normalArray contains all of the items inside of
+        // building.employees.
+
+        const names = building.employees.map(employee => employee.name);
+
+        // names is an ECMAScript Array.
+
+        // Passes various brand checks:
+        console.assert(building.employees instanceof Array);
+        console.assert(Array.isArray(building.employees));
+        console.assert(building.employees.constructor === Array);
+
+        // Even is treated as an array by JSON.stringify:
+        console.assert(JSON.stringify(building.employees)[0] === "[");
+    </pre>
+</div>
 
 <h3 id="idl-extended-attributes">Extended attributes</h3>
 
@@ -6930,6 +7084,7 @@ five forms are allowed.
         "FrozenArray"
         "Infinity"
         "NaN"
+        "ObservableArray"
         "Promise"
         "USVString"
         "any"
@@ -13627,6 +13782,132 @@ internal method as follows.
             1.  Set |desc|.\[[Configurable]] to <emu-val>true</emu-val>.
             1.  Return |desc|.
     1.  Return <a abstract-op>OrdinaryGetOwnProperty</a>(|O|, |P|).
+</div>
+
+<h3 id="es-observable-arrays">Observable array exotic objects</h3>
+
+An <dfn>observable array exotic object</dfn> is a specific type of ECMAScript
+[=Proxy exotic object=] which is created using the proxy hooks defined in this section. They are
+defined in this manner because the ECMAScript specification includes special treatment for
+[=Proxy exotic objects=] that have <code>Array</code> instances as their proxy target, and we want
+to ensure that [=observable array types=] are exposed to ECMAScript code with this special treatment
+intact.
+
+<div algorithm>
+    <!-- TODO: unexport this and do it during attribute setup. -->
+    To <dfn export>create an observable array exotic object</dfn> in a [=Realm=] |realm|:
+
+    1.  Let |innerArray| be [=!=] [$ArrayCreate$](0).
+        <p class="note">This array is not to store the [=backing observable array contents=]. It
+        exists so that the check in [$IsArray$] returns true, and the fallbacks in each proxy
+        handler return the appropriate <code>Array</code>-like values.
+    1.  Let |handler| be [$ObjectCreate$](<emu-val>null</emu-val>, « \[[BackingList]] »).
+    1.  Set |handler|.\[[BackingList]] to a new empty [=list=].
+        <p>By storing the [=backing observable array contents=] here, we avoid any interference from
+        author code patching {{%ArrayPrototype%}} or {{%ObjectPrototype%}} with numeric properties,
+        and let specifications deal only with Infra and IDL values.</p>
+    1.  Let |getOwnPropertyDescriptor| be [=!=] [$CreateBuiltinFunction$](the steps from [[#es-observable-array-getOwnPropertyDescriptor]], « », |realm|).
+    1.  Perform [=!=] [$CreateDataProperty$](|handler|, "getOwnPropertyDescriptor", |getOwnPropertyDescriptor|).
+    1.  Let |get| be [=!=] [$CreateBuiltinFunction$](the steps from [[#es-observable-array-get]], « », |realm|).
+    1.  Perform [=!=] [$CreateDataProperty$](|handler|, "get", |get|).
+    1.  Let |has| be [=!=] [$CreateBuiltinFunction$](the steps from [[#es-observable-array-has]], « », |realm|).
+    1.  Perform [=!=] [$CreateDataProperty$](|handler|, "has", |has|).
+    1.  Let |ownKeys| be [=!=] [$CreateBuiltinFunction$](the steps from [[#es-observable-array-ownKeys]], « », |realm|).
+    1.  Perform [=!=] [$CreateDataProperty$](|handler|, "ownKeys", |ownKeys|).
+    1.  Let |preventExtensions| be [=!=] [$CreateBuiltinFunction$](the steps from [[#es-observable-array-preventExtensions]], « », |realm|).
+    1.  Perform [=!=] [$CreateDataProperty$](|handler|, "preventExtensions", |preventExtensions|).
+    1.  Return [=!=] [$ProxyCreate$](|innerArray|, |handler|).
+</div>
+
+<h4 id="es-observable-array-getOwnPropertyDescriptor"><code>getOwnPropertyDescriptor</code></h4>
+
+<div algorithm="observable array exotic object getOwnPropertyDescriptor trap">
+    The steps for the <code>getOwnPropertyDescriptor</code> proxy trap for
+    [=observable array exotic objects=], given |O| and |P|, are as follows:
+
+    1.  Let |handler| be the <emu-val>this</emu-val> value.
+    1.  If [$Type$](|P|) is String, then:
+        1.  Let |numericIndex| be [=!=] [$CanonicalNumericIndexString$](|P|).
+        1.  If |numericIndex| is not <emu-val>undefined</emu-val>, then:
+            1.  If |numericIndex| is not a [=valid observable array index=] for |handler|, then
+                return <emu-val>undefined</emu-val>.
+            1.  Let |esValue| be |handler|.\[[BackingList]][|numericIndex|],
+                [=converted to an ECMAScript value=].
+            1.  Let |propDesc| be PropertyDescriptor{\[[Value]]: |esValue|, \[[Writable]]: <emu-val>true</emu-val>, \[[Enumerable]]: <emu-val>true</emu-val>, \[[Configurable]]: <emu-val>false</emu-val>}.
+            1.  Return [=!=] [$FromPropertyDescriptor$](|propDesc|).
+    1.  Return [=!=] [$FromPropertyDescriptor$]([=?=] |O|.\[[GetOwnProperty]](|P|)).
+</div>
+
+<h4 id="es-observable-array-has"><code>has</code></h4>
+
+<div algorithm="observable array exotic object has trap">
+    The steps for the <code>has</code> proxy trap for
+    [=observable array exotic objects=], given |O| and |P|, are as follows:
+
+    1.  Let |handler| be the <emu-val>this</emu-val> value.
+    1.  If [$Type$](|P|) is String, then:
+        1.  Let |numericIndex| be [=!=] [$CanonicalNumericIndexString$](|P|).
+        1.  If |numericIndex| is not <emu-val>undefined</emu-val>, then:
+            1.  If |numericIndex| is not a [=valid observable array index=] for |handler|, then
+                return <emu-val>false</emu-val>.
+            1.  Return <emu-val>true</emu-val>.
+    1.  Return [=?=] |O|.\[[HasProperty]](|P|).
+</div>
+
+<h4 id="es-observable-array-get"><code>get</code></h4>
+
+<div algorithm="observable array exotic object get trap">
+    The steps for the <code>get</code> proxy trap for
+    [=observable array exotic objects=], given |O|, |P|, and |receiver|, are as follows:
+
+    1.  Let |handler| be the <emu-val>this</emu-val> value.
+    1.  If [$Type$](|P|) is String, then:
+        1.  Let |numericIndex| be [=!=] [$CanonicalNumericIndexString$](|P|).
+        1.  If |numericIndex| is not <emu-val>undefined</emu-val>, then:
+            1.  If |numericIndex| is not a [=valid observable array index=] for |handler|, then
+                return <emu-val>undefined</emu-val>.
+            1.  Return |handler|.\[[BackingList]][|numericIndex|],
+                [=converted to an ECMAScript value=].
+    1.  Return [=?=] |O|.\[[Get]](|P|, |receiver|).
+</div>
+
+<h4 id="es-observable-array-ownKeys"><code>ownKeys</code></h4>
+
+<div algorithm="observable array exotic object ownKeys trap">
+    The steps for the <code>ownKeys</code> proxy trap for
+    [=observable array exotic objects=], given |O|, are as follows:
+
+    1.  Let |handler| be the <emu-val>this</emu-val> value.
+    1.  Let |keys| be a new empty list.
+    1.  If |handler|.\[[BackingList]] [=list/is not empty=], then set |keys| to [=the range=] from 0
+        to |handler|.\[[BackingList]]'s [=list/size=] &minus; 1.
+    1.  [=list/Extend=] |keys| with [=?=] |O|.\[[OwnPropertyKeys]]().
+    1.  Return [=!=] [$CreateArrayFromList$](|keys|).
+</div>
+
+<h4 id="es-observable-array-preventExtensions"><code>preventExtensions</code></h4>
+
+<div algorithm="observable array exotic object preventExtensions trap">
+    The steps for the <code>preventExtensions</code> proxy trap for
+    [=observable array exotic objects=] are as follows:
+
+    1.  Return <emu-val>false</emu-val>.
+</div>
+
+<h4 id="es-observable-array-abstract-ops">Abstract operations</h4>
+
+<div algorithm>
+    A value |index| is a <dfn>valid observable array index</dfn> for an observable array proxy
+    handler object |handler| if the following operation returns <emu-val>true</emu-val>:
+
+    1.  If |index| is <emu-val>undefined</emu-val>, then return <emu-val>false</emu-val>.
+    1.  Assert: [$Type$](|index|) is Number.
+    1.  If ! [$IsInteger$](|index|) is <emu-val>false</emu-val>, then return
+        <emu-val>false</emu-val>.
+    1.  If |index| is -0, then return <emu-val>false</emu-val>.
+    1.  If |index| &lt 0 or |index| ≥ |handler|.\[[BackingList]]'s [=list/size=], then return
+        <emu-val>false</emu-val>.
+    1.  Return <emu-val>true</emu-val>.
 </div>
 
 <h3 id="es-user-objects">Callback interfaces</h3>
